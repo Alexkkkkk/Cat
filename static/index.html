@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Plushie Cat Project</title>
+    <link rel="stylesheet" href="static/style.css">
+    <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
+</head>
+<body>
+    <div id="ton-connect"></div>
+    <div class="content">
+        <img src="static/images/logo.png" alt="Plushie Cat">
+        <h1>Plushie Cat</h1>
+        <p>We are creating a project where every plushie cat finds its place...</p>
+    </div>
+
+    <script>
+        const tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
+            manifestUrl: 'https://ваш-домен.com/static/tonconnect-manifest.json',
+            buttonRootId: 'ton-connect'
+        });
+    </script>
+</body>
+</html>
