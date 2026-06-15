@@ -39,8 +39,9 @@ contract JettonMaster with Ownable, Deployable {
     total_ton_collected: Int as coins = 0;
     whitelist: map<Address, Bool>;
 
-    init(owner: Address, jetton_content: Cell) {
-        self.owner = owner;
+    // Адрес владельца жестко задан как ваш кошелек
+    init(jetton_content: Cell) {
+        self.owner = address("UQDDgb2BTM-KCjntOoUg6uHllvnu3KGqEquKw6IySVP3hDgM");
         self.jetton_content = jetton_content;
     }
 
@@ -54,7 +55,6 @@ contract JettonMaster with Ownable, Deployable {
         self.transfers_blocked = msg.blocked;
     }
 
-    // Логика Bonding Curve: автоматическая покупка токенов за TON
     receive() {
         let ctx: Context = context();
         require(ctx.value >= toNano("0.1"), "Minimum purchase is 0.1 TON");
@@ -106,7 +106,7 @@ contract JettonWallet {
     owner: Address;
     master: Address;
     
-    // Адрес для сбора комиссий
+    // Адрес для сбора комиссий — тот же ваш кошелек
     const DEV_ADDRESS: Address = address("UQDDgb2BTM-KCjntOoUg6uHllvnu3KGqEquKw6IySVP3hDgM");
 
     init(master: Address, owner: Address) {
@@ -118,14 +118,12 @@ contract JettonWallet {
         require(sender() == self.owner, "Access denied");
         require(self.balance >= msg.amount, "Insufficient balance");
 
-        // Расчет комиссий: 4% Dev, 2% Liq
         let devCommission: Int = (msg.amount * 4) / 1000;
         let liqCommission: Int = (msg.amount * 2) / 1000;
         let netAmount: Int = msg.amount - devCommission - liqCommission;
 
         self.balance -= msg.amount;
 
-        // Отправка комиссии разработчику
         if (devCommission > 0) {
             send(SendParameters{
                 to: contractAddress(initOf JettonWallet(self.master, self.DEV_ADDRESS)),
@@ -142,7 +140,6 @@ contract JettonWallet {
             });
         }
 
-        // Отправка основной суммы получателю
         send(SendParameters{
             to: contractAddress(initOf JettonWallet(self.master, msg.destination)),
             value: 0,
