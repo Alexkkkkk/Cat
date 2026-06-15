@@ -8,7 +8,7 @@ from aiogram.filters import Command
 from threading import Thread
 
 # --- НАСТРОЙКИ ---
-BOT_TOKEN = "ВАШ_ТОКЕН_ОТ_BOTFATHER"
+BOT_TOKEN = "8988117619:AAEsJA7Ub7krmI-Sx4ofPVuOQARV_QzBGBU"
 WEB_APP_URL = "https://catplushie.bothost.tech"
 
 # --- ИНИЦИАЛИЗАЦИЯ FASTAPI ---
