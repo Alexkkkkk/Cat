@@ -1,6 +1,7 @@
 import asyncio
 import uvicorn
 import logging
+import os
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -21,6 +22,7 @@ WEB_APP_URL = "https://catplushie.bothost.tech"
 
 # --- ИНИЦИАЛИЗАЦИЯ FASTAPI ---
 app = FastAPI()
+# Убедитесь, что папка static существует в корне проекта
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/")
@@ -29,8 +31,13 @@ async def read_index():
     return FileResponse('static/index.html')
 
 def run_fastapi():
-    logger.info("Запуск FastAPI сервера на порту 3000...")
-    uvicorn.run(app, host="0.0.0.0", port=3000)
+    # Получаем порт из переменной окружения PORT, предоставляемой Bothost
+    # Если переменная не задана, используем 3000 по умолчанию
+    port = int(os.getenv("PORT", 3000))
+    logger.info(f"Запуск FastAPI сервера на порту {port}...")
+    
+    # host="0.0.0.0" критически важен для работы Reverse Proxy
+    uvicorn.run(app, host="0.0.0.0", port=port)
 
 # --- ИНИЦИАЛИЗАЦИЯ TELEGRAM БОТА ---
 bot = Bot(token=BOT_TOKEN)
