@@ -1,4 +1,5 @@
-FROM python:3.11-slim
+# Используем новейший образ Python 3.13
+FROM python:3.13-slim
 
 WORKDIR /app
 
