@@ -1,17 +1,22 @@
-# Используем новейший образ Python 3.13
-FROM python:3.13-slim
+# Используем официальный образ Node.js, так как BotHost ждет его
+FROM node:20-slim
 
-WORKDIR /app
+# Устанавливаем Python
+RUN apt-get update && apt-get install -y python3 python3-pip python3-venv && rm -rf /var/lib/apt/lists/*
 
-# Копируем зависимости
+# Создаем виртуальное окружение и ставим Python зависимости
+WORKDIR /usr/src/app
+RUN python3 -m venv venv
+ENV PATH="/usr/src/app/venv/bin:$PATH"
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Копируем остальной код
 COPY . .
 
-# Открываем порт для FastAPI
+# Порт
 EXPOSE 3000
 
-# Запуск вашего основного файла
-CMD ["python", "main.py"]
+# Запуск через npm start (который вызывает python main.py)
+CMD ["npm", "start"]
