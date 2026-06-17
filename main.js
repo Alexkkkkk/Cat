@@ -10,7 +10,8 @@ const PORT = process.env.PORT || 3000;
 // --- ИНИЦИАЛИЗАЦИЯ БАЗЫ ДАННЫХ ---
 const db = new sqlite3.Database('database.sqlite');
 db.serialize(() => {
-    db.run("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, balance INTEGER DEFAULT 0)");
+    // Добавили столбец referrer_id
+    db.run("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, balance INTEGER DEFAULT 0, referrer_id INTEGER)");
 });
 
 // --- ИНИЦИАЛИЗАЦИЯ TELEGRAM БОТА ---
@@ -18,10 +19,19 @@ const bot = new Telegraf(BOT_TOKEN);
 
 bot.start((ctx) => {
     const userId = ctx.from.id;
-    // Добавляем пользователя в БД, если его еще нет
-    db.run("INSERT OR IGNORE INTO users (id) VALUES (?)", [userId]);
+    const startPayload = ctx.payload; // Получаем ID пригласившего (если есть)
+
+    // Проверяем, есть ли такой пользователь
+    db.get("SELECT id FROM users WHERE id = ?", [userId], (err, row) => {
+        if (!row) {
+            // Если новый пользователь и есть реферер — сохраняем его
+            const referrer = (startPayload && startPayload !== String(userId)) ? startPayload : null;
+            db.run("INSERT INTO users (id, referrer_id) VALUES (?, ?)", [userId, referrer]);
+        }
+    });
     
-    console.log(`Пользователь ${userId} нажал /start`);
+    console.log(`Пользователь ${userId} нажал /start. Реферер: ${startPayload}`);
+    
     ctx.reply('Добро пожаловать в Plushie Cat! Нажмите кнопку:', {
         reply_markup: {
             inline_keyboard: [[
@@ -39,11 +49,17 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'static', 'index.html'));
 });
 
-// API для получения баланса через WebApp
+// API для получения баланса
 app.get('/api/balance/:id', (req, res) => {
     db.get("SELECT balance FROM users WHERE id = ?", [req.params.id], (err, row) => {
-        if (err) return res.status(500).json({ error: err.message });
         res.json({ balance: row ? row.balance : 0 });
+    });
+});
+
+// API для получения количества рефералов
+app.get('/api/stats/:id', (req, res) => {
+    db.get("SELECT count(*) as referrals FROM users WHERE referrer_id = ?", [req.params.id], (err, row) => {
+        res.json({ referrals: row ? row.referrals : 0 });
     });
 });
 
@@ -61,7 +77,7 @@ const stopServices = async () => {
     try {
         await bot.stop('SIGTERM');
         server.close();
-        db.close(); // Закрываем БД корректно
+        db.close();
         console.log("Сервисы остановлены.");
         process.exit(0);
     } catch (err) {
