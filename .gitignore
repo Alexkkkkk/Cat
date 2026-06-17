@@ -1,0 +1,5 @@
+.env
+database.sqlite
+node_modules
+output
+.DS_Store
