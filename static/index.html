@@ -26,6 +26,15 @@
         <h1 id="title" class="text-4xl font-extrabold text-pink-600 mb-2 tracking-tight">Plushie Cat</h1>
         <p id="subtitle" class="text-pink-400 font-medium mb-6 text-sm uppercase tracking-widest">Мир плюшевых друзей</p>
         
+        <div class="bg-pink-100 p-4 rounded-2xl mb-6 border border-pink-200">
+            <p class="text-xs text-pink-500 uppercase font-bold" id="balance-label">Ваш баланс</p>
+            <p class="text-3xl font-black text-pink-700"><span id="balance-count">0</span> CATP</p>
+        </div>
+
+        <button onclick="buyCoins()" id="buy-btn" class="w-full bg-gradient-to-r from-pink-500 to-purple-500 text-white py-3 rounded-2xl font-bold text-lg shadow-xl mb-6 transform active:scale-95 transition-all">
+            Купить 100 CATP
+        </button>
+
         <div id="status-block" class="hidden">
             <div class="bg-green-100 text-green-700 py-2 px-4 rounded-full border border-green-200 text-sm font-semibold flex items-center justify-center gap-2">
                 <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
@@ -66,9 +75,12 @@
     <div class="mt-auto pt-8 text-gray-400 text-xs">Plushie Cat © 2026</div>
 
     <script>
+        const userId = window.Telegram.WebApp.initDataUnsafe?.user?.id || 0;
+
         const translations = {
             ru: {
                 lang: "RU", title: "Plushie Cat", subtitle: "Мир плюшевых друзей",
+                balance_label: "Ваш баланс", buy: "Купить 100 CATP",
                 wallet: "Кошелек подключен", roadmap: "Наш путь",
                 rm1t: "Запуск проекта", rm1d: "Бот, WebApp, TON Connect",
                 rm2t: "Экономика", rm2d: "Внедрение CATP токенов",
@@ -77,6 +89,7 @@
             },
             en: {
                 lang: "EN", title: "Plushie Cat", subtitle: "World of plush friends",
+                balance_label: "Your balance", buy: "Buy 100 CATP",
                 wallet: "Wallet connected", roadmap: "Our Roadmap",
                 rm1t: "Project Launch", rm1d: "Bot, WebApp, TON Connect",
                 rm2t: "Tokenomics", rm2d: "CATP token integration",
@@ -93,6 +106,8 @@
             document.getElementById('lang-btn').innerText = t.lang;
             document.getElementById('title').innerText = t.title;
             document.getElementById('subtitle').innerText = t.subtitle;
+            document.getElementById('balance-label').innerText = t.balance_label;
+            document.getElementById('buy-btn').innerText = t.buy;
             document.getElementById('wallet-text').innerText = t.wallet;
             document.getElementById('roadmap-title').innerText = t.roadmap;
             document.getElementById('rm-1-title').innerText = t.rm1t;
@@ -105,13 +120,22 @@
             document.getElementById('ref-btn').innerText = t.copy;
         }
 
-        // Логика рефералов
-        const userId = window.Telegram.WebApp.initDataUnsafe?.user?.id || 0;
-        
-        // Запрос статистики к вашему API
+        // Загрузка данных
+        fetch(`/api/balance/${userId}`)
+            .then(res => res.json())
+            .then(data => { document.getElementById('balance-count').innerText = data.balance; });
+
         fetch(`/api/stats/${userId}`)
             .then(res => res.json())
             .then(data => { document.getElementById('ref-count').innerText = data.referrals; });
+
+        function buyCoins() {
+            fetch(`/api/buy/${userId}`, { method: 'POST' })
+                .then(() => {
+                    alert("Успешно! Баланс обновлен.");
+                    location.reload();
+                });
+        }
 
         function copyLink() {
             const link = `https://t.me/CatPlushieBot?start=${userId}`;
