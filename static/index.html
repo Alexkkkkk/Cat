@@ -12,41 +12,45 @@
 </head>
 <body class="flex flex-col items-center justify-start min-h-screen p-6 font-sans">
 
-    <div id="ton-connect" class="w-full flex justify-end mb-4"></div>
+    <div class="w-full flex justify-between items-center mb-4 max-w-sm">
+        <button id="lang-btn" onclick="toggleLanguage()" class="bg-white px-4 py-1.5 rounded-full text-sm font-bold text-pink-600 shadow-sm border border-pink-100 transition-all hover:scale-105">
+            RU
+        </button>
+        <div id="ton-connect"></div>
+    </div>
 
     <div class="bg-white/80 backdrop-blur-md p-8 rounded-[2rem] shadow-2xl text-center max-w-sm w-full border border-white/50 mb-6">
         <div class="relative mx-auto w-32 h-32 mb-6">
-            <img src="static/images/logo.png" alt="Plushie Cat" 
-                 class="w-full h-full object-cover rounded-3xl border-4 border-white shadow-lg">
+            <img src="static/images/logo.png" alt="Plushie Cat" class="w-full h-full object-cover rounded-3xl border-4 border-white shadow-lg">
         </div>
-        <h1 class="text-4xl font-extrabold text-pink-600 mb-2 tracking-tight">Plushie Cat</h1>
-        <p class="text-pink-400 font-medium mb-6 text-sm uppercase tracking-widest">Мир плюшевых друзей</p>
+        <h1 id="title" class="text-4xl font-extrabold text-pink-600 mb-2 tracking-tight">Plushie Cat</h1>
+        <p id="subtitle" class="text-pink-400 font-medium mb-6 text-sm uppercase tracking-widest">Мир плюшевых друзей</p>
         
         <div id="status-block" class="hidden">
             <div class="bg-green-100 text-green-700 py-2 px-4 rounded-full border border-green-200 text-sm font-semibold flex items-center justify-center gap-2">
                 <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                Кошелек подключен
+                <span id="wallet-text">Кошелек подключен</span>
             </div>
         </div>
     </div>
 
     <div class="bg-white/60 backdrop-blur-md p-6 rounded-[2rem] max-w-sm w-full border border-white/50 shadow-lg">
-        <h2 class="text-xl font-bold text-pink-600 mb-6 text-center">Наш путь</h2>
+        <h2 id="roadmap-title" class="text-xl font-bold text-pink-600 mb-6 text-center">Наш путь</h2>
         <div class="relative border-l-2 border-pink-200 ml-3 space-y-8">
             <div class="relative pl-6">
                 <div class="absolute -left-[9px] top-1 w-4 h-4 bg-pink-500 rounded-full"></div>
-                <h3 class="font-bold text-gray-800">Запуск проекта</h3>
-                <p class="text-xs text-gray-500">Бот, WebApp, TON Connect</p>
+                <h3 id="rm-1-title" class="font-bold text-gray-800">Запуск проекта</h3>
+                <p id="rm-1-desc" class="text-xs text-gray-500">Бот, WebApp, TON Connect</p>
             </div>
             <div class="relative pl-6">
                 <div class="absolute -left-[9px] top-1 w-4 h-4 bg-pink-300 rounded-full"></div>
-                <h3 class="font-bold text-gray-800">Экономика</h3>
-                <p class="text-xs text-gray-500">Внедрение CATP токенов</p>
+                <h3 id="rm-2-title" class="font-bold text-gray-800">Экономика</h3>
+                <p id="rm-2-desc" class="text-xs text-gray-500">Внедрение CATP токенов</p>
             </div>
             <div class="relative pl-6">
                 <div class="absolute -left-[9px] top-1 w-4 h-4 bg-pink-200 rounded-full"></div>
-                <h3 class="font-bold text-gray-800">NFT Коллекция</h3>
-                <p class="text-xs text-gray-500">Мини-игра и маркетплейс</p>
+                <h3 id="rm-3-title" class="font-bold text-gray-800">NFT Коллекция</h3>
+                <p id="rm-3-desc" class="text-xs text-gray-500">Мини-игра и маркетплейс</p>
             </div>
         </div>
     </div>
@@ -54,6 +58,41 @@
     <div class="mt-auto pt-8 text-gray-400 text-xs">Plushie Cat © 2026</div>
 
     <script>
+        const translations = {
+            ru: {
+                lang: "RU", title: "Plushie Cat", subtitle: "Мир плюшевых друзей",
+                wallet: "Кошелек подключен", roadmap: "Наш путь",
+                rm1t: "Запуск проекта", rm1d: "Бот, WebApp, TON Connect",
+                rm2t: "Экономика", rm2d: "Внедрение CATP токенов",
+                rm3t: "NFT Коллекция", rm3d: "Мини-игра и маркетплейс"
+            },
+            en: {
+                lang: "EN", title: "Plushie Cat", subtitle: "World of plush friends",
+                wallet: "Wallet connected", roadmap: "Our Roadmap",
+                rm1t: "Project Launch", rm1d: "Bot, WebApp, TON Connect",
+                rm2t: "Tokenomics", rm2d: "CATP token integration",
+                rm3t: "NFT Collection", rm3d: "Mini-game & Marketplace"
+            }
+        };
+
+        let currentLang = 'ru';
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'ru' ? 'en' : 'ru';
+            const t = translations[currentLang];
+            document.getElementById('lang-btn').innerText = t.lang;
+            document.getElementById('title').innerText = t.title;
+            document.getElementById('subtitle').innerText = t.subtitle;
+            document.getElementById('wallet-text').innerText = t.wallet;
+            document.getElementById('roadmap-title').innerText = t.roadmap;
+            document.getElementById('rm-1-title').innerText = t.rm1t;
+            document.getElementById('rm-1-desc').innerText = t.rm1d;
+            document.getElementById('rm-2-title').innerText = t.rm2t;
+            document.getElementById('rm-2-desc').innerText = t.rm2d;
+            document.getElementById('rm-3-title').innerText = t.rm3t;
+            document.getElementById('rm-3-desc').innerText = t.rm3d;
+        }
+
         const tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
             manifestUrl: 'https://catplushie.bothost.tech/static/tonconnect-manifest.json',
             buttonRootId: 'ton-connect'
