@@ -18,36 +18,53 @@ async function main() {
         const wallet = WalletContractV4.create({ workchain: 0, publicKey: key.publicKey });
         const walletContract = client.open(wallet);
         
-        // Получаем текущий seqno кошелька для подписи транзакции
+        // 3. Проверка баланса перед отправкой (Защита от ошибки нехватки TON)
+        const balance = await walletContract.getBalance();
+        if (balance < toNano("0.1")) {
+            throw new Error(`Недостаточно средств на кошельке: ${Number(balance) / 1e9} TON`);
+        }
+        
+        // Получаем текущий seqno кошелька
         const seqno = await walletContract.getSeqno();
 
-        // 3. Формирование сообщения SetRateConfig
-        // ID операции (op code) должен совпадать с тем, что сгенерирует Tact
+        // 4. Формирование сообщения SetRateConfig
         const body = beginCell()
             .storeUint(0x73657452, 32)        // Op code для SetRateConfig
             .storeUint(12000, 64)            // Новый rate_multiplier
-            .storeCoins(toNano("0.1"))       // min_purchase (0.1 TON)
-            .storeCoins(toNano("1000"))      // max_purchase (1000 TON)
+            .storeCoins(toNano("0.1"))       // min_purchase
+            .storeCoins(toNano("1000"))      // max_purchase
             .endCell();
 
         console.log("Отправка транзакции обновления конфигурации...");
 
-        // 4. Отправка транзакции
+        // 5. Отправка транзакции
         await walletContract.sendTransfer({
             seqno,
             secretKey: key.secretKey,
             messages: [
                 internal({
-                    to: process.env.MASTER_ADDRESS, // Адрес вашего контракта
-                    value: toNano("0.05"),          // Газ на выполнение
+                    to: process.env.MASTER_ADDRESS,
+                    value: toNano("0.05"), // Газ на выполнение
                     body: body,
                 })
             ]
         });
 
-        console.log("Конфигурация успешно обновлена в сети!");
+        // 6. Ожидание подтверждения в блокчейне
+        console.log("Транзакция отправлена. Ждем подтверждения...");
+        let currentSeqno = seqno;
+        for (let i = 0; i < 15; i++) {
+            await new Promise(resolve => setTimeout(resolve, 3000)); // Ждем 3 сек
+            const nextSeqno = await walletContract.getSeqno();
+            if (nextSeqno > currentSeqno) {
+                console.log("✅ Успешно! Конфигурация обновлена в блокчейне.");
+                return;
+            }
+        }
+        console.warn("⚠️ Транзакция отправлена, но блокчейн еще не подтвердил обновление.");
+
     } catch (error) {
-        console.error("Ошибка при выполнении скрипта:", error);
+        console.error("❌ Ошибка при выполнении скрипта:", error.message);
     }
 }
 
