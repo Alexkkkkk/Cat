@@ -1,35 +1,34 @@
-const { Telegraf } = require('telegraf');
-const express = require('express');
-const path = require('path');
-const sqlite3 = require('sqlite3').verbose();
-const fs = require('fs');
+import { Telegraf } from 'telegraf';
+import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import sqlite3 from 'sqlite3';
+import fs from 'fs';
+import cors from 'cors';
+import { updateMarketConfig } from './scripts/controller.js'; // Ваш скрипт управления
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const BOT_TOKEN = "8988117619:AAEjj9gJvQ0hN5z4aZMqHpZWKc0rOIZFRiE";
 const WEB_APP_URL = "https://catplushie.bothost.tech";
 const PORT = process.env.PORT || 3000;
 
-// --- ЗАГРУЗКА КОНФИГА КОНТРАКТА ---
-let contractConfig = {};
-try {
-    if (fs.existsSync('contract_config.json')) {
-        contractConfig = JSON.parse(fs.readFileSync('contract_config.json', 'utf8'));
-        console.log(`✅ Контракт подключен: ${contractConfig.masterAddress}`);
-    } else {
-        console.warn("⚠️ contract_config.json не найден. Выполните деплой!");
-    }
-} catch (e) {
-    console.error("Ошибка чтения конфига:", e);
+// --- ИНИЦИАЛИЗАЦИЯ ---
+let contractConfig = { masterAddress: 'none' };
+if (fs.existsSync('contract_config.json')) {
+    contractConfig = JSON.parse(fs.readFileSync('contract_config.json', 'utf8'));
 }
 
-// --- ИНИЦИАЛИЗАЦИЯ БАЗЫ ДАННЫХ ---
 const db = new sqlite3.Database('database.sqlite');
-db.serialize(() => {
-    db.run("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, balance INTEGER DEFAULT 0, referrer_id INTEGER)");
-});
+db.run("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, balance INTEGER DEFAULT 0, referrer_id INTEGER)");
 
-// --- ИНИЦИАЛИЗАЦИЯ TELEGRAM БОТА ---
 const bot = new Telegraf(BOT_TOKEN);
+const app = express();
 
+app.use(cors());
+app.use(express.json());
+app.use('/static', express.static(path.join(__dirname, 'static')));
+
+// --- TELEGRAM БОТ ---
 bot.start((ctx) => {
     const userId = ctx.from.id;
     const startPayload = ctx.payload;
@@ -41,31 +40,27 @@ bot.start((ctx) => {
         }
     });
     
-    // Передаем адрес контракта в WebApp (через URL параметры)
-    const webAppUrlWithParams = `${WEB_APP_URL}?masterAddress=${contractConfig.masterAddress || 'none'}`;
-    
-    ctx.reply('Добро пожаловать в Plushie Cat! Нажмите кнопку:', {
+    const webAppUrlWithParams = `${WEB_APP_URL}?masterAddress=${contractConfig.masterAddress}`;
+    ctx.reply('Добро пожаловать в Plushie Cat!', {
         reply_markup: {
-            inline_keyboard: [[
-                { text: "Открыть Plushie Cat", web_app: { url: webAppUrlWithParams } }
-            ]]
+            inline_keyboard: [[{ text: "Открыть Plushie Cat", web_app: { url: webAppUrlWithParams } }]]
         }
     });
 });
 
-// --- ИНИЦИАЛИЗАЦИЯ EXPRESS ---
-const app = express();
-app.use(express.json());
-app.use('/static', express.static(path.join(__dirname, 'static')));
-
-// Эндпоинт для фронтенда, чтобы узнать адрес контракта
-app.get('/api/config', (req, res) => {
-    res.json(contractConfig);
+// Админ-команда для управления контрактом
+bot.command('setrate', async (ctx) => {
+    // ВАЖНО: Добавьте проверку ID админа!
+    try {
+        await updateMarketConfig(12000, 100000000, 1000000000000);
+        ctx.reply('Курс на блокчейне обновлен!');
+    } catch (e) {
+        ctx.reply('Ошибка управления контрактом.');
+    }
 });
 
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'static', 'index.html'));
-});
+// --- API ЭНДПОИНТЫ ---
+app.get('/api/config', (req, res) => res.json(contractConfig));
 
 app.get('/api/balance/:id', (req, res) => {
     db.get("SELECT balance FROM users WHERE id = ?", [req.params.id], (err, row) => {
@@ -80,29 +75,9 @@ app.post('/api/buy/:id', (req, res) => {
     });
 });
 
-app.get('/api/stats/:id', (req, res) => {
-    db.get("SELECT count(*) as referrals FROM users WHERE referrer_id = ?", [req.params.id], (err, row) => {
-        res.json({ referrals: row ? row.referrals : 0 });
-    });
-});
+// --- ЗАПУСК ---
+const server = app.listen(PORT, '0.0.0.0', () => console.log(`Сервер запущен на ${PORT}`));
+bot.launch().then(() => console.log("Бот запущен!"));
 
-const server = app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Web-сервер запущен на порту ${PORT}`);
-});
-
-bot.launch().then(() => console.log("Telegram-бот запущен!"));
-
-const stopServices = async () => {
-    console.log("Остановка сервисов...");
-    try {
-        await bot.stop('SIGTERM');
-        server.close();
-        db.close();
-        process.exit(0);
-    } catch (err) {
-        process.exit(1);
-    }
-};
-
-process.once('SIGINT', stopServices);
-process.once('SIGTERM', stopServices);
+process.once('SIGINT', () => { bot.stop('SIGINT'); server.close(); db.close(); });
+process.once('SIGTERM', () => { bot.stop('SIGTERM'); server.close(); db.close(); });
