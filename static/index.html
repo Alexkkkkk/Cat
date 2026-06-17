@@ -4,24 +4,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Plushie Cat</title>
-    <!-- Подключаем Tailwind CSS для красивого дизайна -->
+    <!-- Подключаем Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Подключаем TON Connect UI -->
     <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
 </head>
-<body class="bg-pink-50 flex flex-col items-center justify-center min-h-screen p-4">
+<body class="bg-pink-50 flex flex-col items-center justify-center min-h-screen p-4 font-sans">
 
-    <!-- Контейнер для кошелька -->
+    <!-- Контейнер для кнопки кошелька -->
     <div id="ton-connect" class="mb-8"></div>
 
     <!-- Основной блок -->
     <div class="bg-white p-8 rounded-3xl shadow-xl text-center max-w-sm w-full border border-pink-100">
-        <img src="/static/images/logo.png" alt="Plushie Cat" class="w-32 h-32 mx-auto mb-6 rounded-full border-4 border-pink-200">
+        <img src="static/images/logo.png" alt="Plushie Cat" class="w-32 h-32 mx-auto mb-6 rounded-full border-4 border-pink-200 shadow-inner">
         
         <h1 class="text-3xl font-bold text-pink-600 mb-4">Plushie Cat</h1>
-        <p class="text-gray-600 leading-relaxed">
+        <p class="text-gray-600 leading-relaxed mb-6">
             Мы создаем проект, где каждый плюшевый котик находит свое место...
         </p>
+
+        <!-- Блок для отображения статуса -->
+        <div id="status-block" class="hidden text-sm text-green-600 bg-green-50 p-3 rounded-lg border border-green-200">
+            Кошелек подключен!
+        </div>
     </div>
 
     <script>
@@ -29,6 +34,19 @@
         const tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
             manifestUrl: 'https://catplushie.bothost.tech/static/tonconnect-manifest.json',
             buttonRootId: 'ton-connect'
+        });
+
+        // Слушатель событий изменения состояния кошелька
+        tonConnectUI.onStatusChange((wallet) => {
+            const statusBlock = document.getElementById('status-block');
+            if (wallet) {
+                // Если кошелек подключен
+                statusBlock.classList.remove('hidden');
+                console.log("Wallet connected:", wallet);
+            } else {
+                // Если кошелек отключен
+                statusBlock.classList.add('hidden');
+            }
         });
     </script>
 </body>
