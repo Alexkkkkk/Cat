@@ -10,7 +10,6 @@ const PORT = process.env.PORT || 3000;
 // --- ИНИЦИАЛИЗАЦИЯ БАЗЫ ДАННЫХ ---
 const db = new sqlite3.Database('database.sqlite');
 db.serialize(() => {
-    // Добавили столбец referrer_id
     db.run("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, balance INTEGER DEFAULT 0, referrer_id INTEGER)");
 });
 
@@ -19,12 +18,10 @@ const bot = new Telegraf(BOT_TOKEN);
 
 bot.start((ctx) => {
     const userId = ctx.from.id;
-    const startPayload = ctx.payload; // Получаем ID пригласившего (если есть)
+    const startPayload = ctx.payload;
 
-    // Проверяем, есть ли такой пользователь
     db.get("SELECT id FROM users WHERE id = ?", [userId], (err, row) => {
         if (!row) {
-            // Если новый пользователь и есть реферер — сохраняем его
             const referrer = (startPayload && startPayload !== String(userId)) ? startPayload : null;
             db.run("INSERT INTO users (id, referrer_id) VALUES (?, ?)", [userId, referrer]);
         }
@@ -43,6 +40,7 @@ bot.start((ctx) => {
 
 // --- ИНИЦИАЛИЗАЦИЯ EXPRESS ---
 const app = express();
+app.use(express.json()); // Добавлено для корректной работы API
 app.use('/static', express.static(path.join(__dirname, 'static')));
 
 app.get('/', (req, res) => {
@@ -63,6 +61,14 @@ app.get('/api/stats/:id', (req, res) => {
     });
 });
 
+// API для покупки монет (Добавлено)
+app.post('/api/buy/:id', (req, res) => {
+    db.run("UPDATE users SET balance = balance + 100 WHERE id = ?", [req.params.id], (err) => {
+        if (err) return res.status(500).json({ success: false });
+        res.json({ success: true });
+    });
+});
+
 // Запуск веб-сервера
 const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`Web-сервер запущен на порту ${PORT}`);
@@ -71,17 +77,15 @@ const server = app.listen(PORT, '0.0.0.0', () => {
 // Запуск бота
 bot.launch().then(() => console.log("Telegram-бот запущен!"));
 
-// --- ПЛАВНОЕ ЗАВЕРШЕНИЕ (Graceful Shutdown) ---
+// --- ПЛАВНОЕ ЗАВЕРШЕНИЕ ---
 const stopServices = async () => {
     console.log("Остановка сервисов...");
     try {
         await bot.stop('SIGTERM');
         server.close();
         db.close();
-        console.log("Сервисы остановлены.");
         process.exit(0);
     } catch (err) {
-        console.error("Ошибка при остановке:", err);
         process.exit(1);
     }
 };
