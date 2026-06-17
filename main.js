@@ -2,10 +2,24 @@ const { Telegraf } = require('telegraf');
 const express = require('express');
 const path = require('path');
 const sqlite3 = require('sqlite3').verbose();
+const fs = require('fs');
 
 const BOT_TOKEN = "8988117619:AAEjj9gJvQ0hN5z4aZMqHpZWKc0rOIZFRiE";
 const WEB_APP_URL = "https://catplushie.bothost.tech";
 const PORT = process.env.PORT || 3000;
+
+// --- ЗАГРУЗКА КОНФИГА КОНТРАКТА ---
+let contractConfig = {};
+try {
+    if (fs.existsSync('contract_config.json')) {
+        contractConfig = JSON.parse(fs.readFileSync('contract_config.json', 'utf8'));
+        console.log(`✅ Контракт подключен: ${contractConfig.masterAddress}`);
+    } else {
+        console.warn("⚠️ contract_config.json не найден. Выполните деплой!");
+    }
+} catch (e) {
+    console.error("Ошибка чтения конфига:", e);
+}
 
 // --- ИНИЦИАЛИЗАЦИЯ БАЗЫ ДАННЫХ ---
 const db = new sqlite3.Database('database.sqlite');
@@ -27,12 +41,13 @@ bot.start((ctx) => {
         }
     });
     
-    console.log(`Пользователь ${userId} нажал /start. Реферер: ${startPayload}`);
+    // Передаем адрес контракта в WebApp (через URL параметры)
+    const webAppUrlWithParams = `${WEB_APP_URL}?masterAddress=${contractConfig.masterAddress || 'none'}`;
     
     ctx.reply('Добро пожаловать в Plushie Cat! Нажмите кнопку:', {
         reply_markup: {
             inline_keyboard: [[
-                { text: "Открыть Plushie Cat", web_app: { url: WEB_APP_URL } }
+                { text: "Открыть Plushie Cat", web_app: { url: webAppUrlWithParams } }
             ]]
         }
     });
@@ -40,21 +55,24 @@ bot.start((ctx) => {
 
 // --- ИНИЦИАЛИЗАЦИЯ EXPRESS ---
 const app = express();
-app.use(express.json()); // ОБЯЗАТЕЛЬНО для работы POST запросов
+app.use(express.json());
 app.use('/static', express.static(path.join(__dirname, 'static')));
+
+// Эндпоинт для фронтенда, чтобы узнать адрес контракта
+app.get('/api/config', (req, res) => {
+    res.json(contractConfig);
+});
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'static', 'index.html'));
 });
 
-// API для получения баланса
 app.get('/api/balance/:id', (req, res) => {
     db.get("SELECT balance FROM users WHERE id = ?", [req.params.id], (err, row) => {
         res.json({ balance: row ? row.balance : 0 });
     });
 });
 
-// API для покупки монет (Добавлено)
 app.post('/api/buy/:id', (req, res) => {
     db.run("UPDATE users SET balance = balance + 100 WHERE id = ?", [req.params.id], (err) => {
         if (err) return res.status(500).json({ error: err.message });
@@ -62,32 +80,26 @@ app.post('/api/buy/:id', (req, res) => {
     });
 });
 
-// API для получения количества рефералов
 app.get('/api/stats/:id', (req, res) => {
     db.get("SELECT count(*) as referrals FROM users WHERE referrer_id = ?", [req.params.id], (err, row) => {
         res.json({ referrals: row ? row.referrals : 0 });
     });
 });
 
-// Запуск веб-сервера
 const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`Web-сервер запущен на порту ${PORT}`);
 });
 
-// Запуск бота
 bot.launch().then(() => console.log("Telegram-бот запущен!"));
 
-// --- ПЛАВНОЕ ЗАВЕРШЕНИЕ ---
 const stopServices = async () => {
     console.log("Остановка сервисов...");
     try {
         await bot.stop('SIGTERM');
         server.close();
         db.close();
-        console.log("Сервисы остановлены.");
         process.exit(0);
     } catch (err) {
-        console.error("Ошибка при остановке:", err);
         process.exit(1);
     }
 };
