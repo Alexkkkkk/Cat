@@ -5,23 +5,21 @@ import { fileURLToPath } from 'url';
 import sqlite3 from 'sqlite3';
 import fs from 'fs';
 import cors from 'cors';
-import { updateMarketConfig } from './scripts/controller.js';
+import { toNano } from '@ton/core'; 
+import { updateMarketConfig, changeWalletStatus } from './scripts/controller.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Рекомендуется использовать переменные окружения для токена
+// КОНФИГУРАЦИЯ
+const ADMIN_ID = 476014374; // Ваш ID, который вы предоставили
 const BOT_TOKEN = process.env.BOT_TOKEN || "8988117619:AAEjj9gJvQ0hN5z4aZMqHpZWKc0rOIZFRiE";
 const WEB_APP_URL = "https://catplushie.bothost.tech";
 const PORT = process.env.PORT || 3000;
 
-// --- ИНИЦИАЛИЗАЦИЯ ---
 let contractConfig = { masterAddress: 'none' };
 if (fs.existsSync('contract_config.json')) {
-    try {
-        contractConfig = JSON.parse(fs.readFileSync('contract_config.json', 'utf8'));
-    } catch (e) {
-        console.error("Ошибка при чтении конфига контракта:", e);
-    }
+    try { contractConfig = JSON.parse(fs.readFileSync('contract_config.json', 'utf8')); } 
+    catch (e) { console.error("Ошибка чтения конфига:", e); }
 }
 
 const db = new sqlite3.Database('database.sqlite');
@@ -54,18 +52,41 @@ bot.start((ctx) => {
     });
 });
 
+// АДМИН-КОМАНДА: Установка курса и лимитов
+// Пример: /setrate 12000 0.1 1000
 bot.command('setrate', async (ctx) => {
-    // ВАЖНО: Добавьте проверку ID админа, чтобы управлять курсом могли только вы!
+    if (ctx.from.id !== ADMIN_ID) return ctx.reply("⛔️ Доступ запрещен.");
+    
     try {
-        await updateMarketConfig(12000, 100000000, 1000000000000);
-        ctx.reply('Курс на блокчейне успешно обновлен!');
+        const parts = ctx.message.text.split(' ');
+        if (parts.length < 4) return ctx.reply("Использование: /setrate <rate> <minTON> <maxTON>");
+        
+        await ctx.reply("⏳ Отправляю транзакцию обновления курса...");
+        await updateMarketConfig(parseInt(parts[1]), toNano(parts[2]), toNano(parts[3]));
+        ctx.reply('✅ Курс и лимиты успешно обновлены на блокчейне!');
     } catch (e) {
-        console.error(e);
-        ctx.reply('Ошибка управления контрактом.');
+        ctx.reply('❌ Ошибка контракта: ' + e.message);
     }
 });
 
-// --- API ЭНДПОИНТЫ ---
+// АДМИН-КОМАНДА: Блокировка/Разблокировка кошелька
+// Пример: /lock <address> true
+bot.command('lock', async (ctx) => {
+    if (ctx.from.id !== ADMIN_ID) return ctx.reply("⛔️ Доступ запрещен.");
+    
+    try {
+        const parts = ctx.message.text.split(' ');
+        if (parts.length < 3) return ctx.reply("Использование: /lock <address> <true/false>");
+        
+        await ctx.reply(`⏳ Отправляю команду блокировки для ${parts[1]}...`);
+        await changeWalletStatus(parts[1], parts[2] === 'true');
+        ctx.reply(`🔒 Статус кошелька успешно изменен на: ${parts[2]}`);
+    } catch (e) {
+        ctx.reply('❌ Ошибка при смене статуса: ' + e.message);
+    }
+});
+
+// --- API ---
 app.get('/api/config', (req, res) => res.json(contractConfig));
 
 app.get('/api/balance/:id', (req, res) => {
@@ -81,21 +102,11 @@ app.post('/api/buy/:id', (req, res) => {
     });
 });
 
-// --- ЗАПУСК СЕРВИСОВ ---
+// --- ЗАПУСК ---
 const server = app.listen(PORT, '0.0.0.0', () => console.log(`Web-сервер запущен на порту ${PORT}`));
 
-// Ключевое изменение: dropPendingUpdates: true исправляет ошибку 409
-bot.launch({
-    dropPendingUpdates: true 
-}).then(() => console.log("Бот запущен и очистил старые очереди!"));
+bot.launch({ dropPendingUpdates: true }).then(() => console.log("Бот запущен и готов к работе!"));
 
-// Корректное завершение работы
-const stop = () => {
-    bot.stop();
-    server.close();
-    db.close();
-    process.exit(0);
-};
-
+const stop = () => { bot.stop(); server.close(); db.close(); process.exit(0); };
 process.once('SIGINT', stop);
 process.once('SIGTERM', stop);
