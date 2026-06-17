@@ -34,6 +34,14 @@
         </div>
     </div>
 
+    <div class="bg-white/60 backdrop-blur-md p-6 rounded-[2rem] max-w-sm w-full border border-white/50 shadow-lg mb-6 text-center">
+        <h2 id="ref-title" class="text-xl font-bold text-pink-600 mb-2">Рефералы</h2>
+        <p class="text-3xl font-black text-gray-700 mb-4" id="ref-count">0</p>
+        <button onclick="copyLink()" id="ref-btn" class="bg-pink-500 text-white px-6 py-2 rounded-full font-bold text-sm shadow-lg hover:bg-pink-600 transition-all">
+            Скопировать ссылку
+        </button>
+    </div>
+
     <div class="bg-white/60 backdrop-blur-md p-6 rounded-[2rem] max-w-sm w-full border border-white/50 shadow-lg">
         <h2 id="roadmap-title" class="text-xl font-bold text-pink-600 mb-6 text-center">Наш путь</h2>
         <div class="relative border-l-2 border-pink-200 ml-3 space-y-8">
@@ -64,14 +72,16 @@
                 wallet: "Кошелек подключен", roadmap: "Наш путь",
                 rm1t: "Запуск проекта", rm1d: "Бот, WebApp, TON Connect",
                 rm2t: "Экономика", rm2d: "Внедрение CATP токенов",
-                rm3t: "NFT Коллекция", rm3d: "Мини-игра и маркетплейс"
+                rm3t: "NFT Коллекция", rm3d: "Мини-игра и маркетплейс",
+                ref: "Рефералы", copy: "Скопировать ссылку"
             },
             en: {
                 lang: "EN", title: "Plushie Cat", subtitle: "World of plush friends",
                 wallet: "Wallet connected", roadmap: "Our Roadmap",
                 rm1t: "Project Launch", rm1d: "Bot, WebApp, TON Connect",
                 rm2t: "Tokenomics", rm2d: "CATP token integration",
-                rm3t: "NFT Collection", rm3d: "Mini-game & Marketplace"
+                rm3t: "NFT Collection", rm3d: "Mini-game & Marketplace",
+                ref: "Referrals", copy: "Copy Link"
             }
         };
 
@@ -91,6 +101,22 @@
             document.getElementById('rm-2-desc').innerText = t.rm2d;
             document.getElementById('rm-3-title').innerText = t.rm3t;
             document.getElementById('rm-3-desc').innerText = t.rm3d;
+            document.getElementById('ref-title').innerText = t.ref;
+            document.getElementById('ref-btn').innerText = t.copy;
+        }
+
+        // Логика рефералов
+        const userId = window.Telegram.WebApp.initDataUnsafe?.user?.id || 0;
+        
+        // Запрос статистики к вашему API
+        fetch(`/api/stats/${userId}`)
+            .then(res => res.json())
+            .then(data => { document.getElementById('ref-count').innerText = data.referrals; });
+
+        function copyLink() {
+            const link = `https://t.me/CatPlushieBot?start=${userId}`;
+            navigator.clipboard.writeText(link);
+            alert("Ссылка скопирована!");
         }
 
         const tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
