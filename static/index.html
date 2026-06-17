@@ -16,7 +16,7 @@
         <button id="lang-btn" onclick="toggleLanguage()" class="bg-white px-4 py-1.5 rounded-full text-sm font-bold text-pink-600 shadow-sm border border-pink-100 transition-all hover:scale-105">
             RU
         </button>
-        <div id="ton-connect"></div>
+        <div id="ton-connect" style="min-width: 120px; min-height: 40px;"></div>
     </div>
 
     <div class="bg-white/80 backdrop-blur-md p-8 rounded-[2rem] shadow-2xl text-center max-w-sm w-full border border-white/50 mb-6">
@@ -75,14 +75,19 @@
     <div class="mt-auto pt-8 text-gray-400 text-xs">Plushie Cat © 2026</div>
 
     <script>
-        // Инициализация при полной загрузке DOM
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log("DOM готов, запускаем скрипты...");
-            
+        // Глобальные переменные
+        const translations = {
+            ru: { lang: "RU", title: "Plushie Cat", subtitle: "Мир плюшевых друзей", balance_label: "Ваш баланс", buy: "Купить 100 CATP", wallet: "Кошелек подключен", roadmap: "Наш путь", rm1t: "Запуск проекта", rm1d: "Бот, WebApp, TON Connect", rm2t: "Экономика", rm2d: "Внедрение CATP токенов", rm3t: "NFT Коллекция", rm3d: "Мини-игра и маркетплейс", ref: "Рефералы", copy: "Скопировать ссылку" },
+            en: { lang: "EN", title: "Plushie Cat", subtitle: "World of plush friends", balance_label: "Your balance", buy: "Buy 100 CATP", wallet: "Wallet connected", roadmap: "Our Roadmap", rm1t: "Project Launch", rm1d: "Bot, WebApp, TON Connect", rm2t: "Tokenomics", rm2d: "CATP token integration", rm3t: "NFT Collection", rm3d: "Mini-game & Marketplace", ref: "Referrals", copy: "Copy Link" }
+        };
+        let currentLang = 'ru';
+
+        // Инициализация при полной загрузке
+        window.addEventListener('load', () => {
             const userId = window.Telegram.WebApp.initDataUnsafe?.user?.id || 0;
 
-            // TON Connect
-            try {
+            // Инициализация TON Connect
+            if (typeof TON_CONNECT_UI !== 'undefined') {
                 const tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
                     manifestUrl: 'https://catplushie.bothost.tech/static/tonconnect-manifest.json',
                     buttonRootId: 'ton-connect'
@@ -91,8 +96,6 @@
                     const sb = document.getElementById('status-block');
                     if (sb) sb.classList.toggle('hidden', !wallet);
                 });
-            } catch (err) {
-                console.error("Ошибка TON Connect:", err);
             }
 
             // Загрузка данных
@@ -100,33 +103,24 @@
             fetch(`/api/stats/${userId}`).then(r => r.json()).then(d => { document.getElementById('ref-count').innerText = d.referrals; });
         });
 
-        const translations = {
-            ru: { lang: "RU", title: "Plushie Cat", subtitle: "Мир плюшевых друзей", balance_label: "Ваш баланс", buy: "Купить 100 CATP", wallet: "Кошелек подключен", roadmap: "Наш путь", rm1t: "Запуск проекта", rm1d: "Бот, WebApp, TON Connect", rm2t: "Экономика", rm2d: "Внедрение CATP токенов", rm3t: "NFT Коллекция", rm3d: "Мини-игра и маркетплейс", ref: "Рефералы", copy: "Скопировать ссылку" },
-            en: { lang: "EN", title: "Plushie Cat", subtitle: "World of plush friends", balance_label: "Your balance", buy: "Buy 100 CATP", wallet: "Wallet connected", roadmap: "Our Roadmap", rm1t: "Project Launch", rm1d: "Bot, WebApp, TON Connect", rm2t: "Tokenomics", rm2d: "CATP token integration", rm3t: "NFT Collection", rm3d: "Mini-game & Marketplace", ref: "Referrals", copy: "Copy Link" }
-        };
-
-        let currentLang = 'ru';
-
         function toggleLanguage() {
             currentLang = currentLang === 'ru' ? 'en' : 'ru';
             const t = translations[currentLang];
-            try {
-                document.getElementById('lang-btn').innerText = t.lang;
-                document.getElementById('title').innerText = t.title;
-                document.getElementById('subtitle').innerText = t.subtitle;
-                document.getElementById('balance-label').innerText = t.balance_label;
-                document.getElementById('buy-btn').innerText = t.buy;
-                document.getElementById('wallet-text').innerText = t.wallet;
-                document.getElementById('roadmap-title').innerText = t.roadmap;
-                document.getElementById('rm-1-title').innerText = t.rm1t;
-                document.getElementById('rm-1-desc').innerText = t.rm1d;
-                document.getElementById('rm-2-title').innerText = t.rm2t;
-                document.getElementById('rm-2-desc').innerText = t.rm2d;
-                document.getElementById('rm-3-title').innerText = t.rm3t;
-                document.getElementById('rm-3-desc').innerText = t.rm3d;
-                document.getElementById('ref-title').innerText = t.ref;
-                document.getElementById('ref-btn').innerText = t.copy;
-            } catch (e) { console.error("Ошибка смены языка:", e); }
+            document.getElementById('lang-btn').innerText = t.lang;
+            document.getElementById('title').innerText = t.title;
+            document.getElementById('subtitle').innerText = t.subtitle;
+            document.getElementById('balance-label').innerText = t.balance_label;
+            document.getElementById('buy-btn').innerText = t.buy;
+            document.getElementById('wallet-text').innerText = t.wallet;
+            document.getElementById('roadmap-title').innerText = t.roadmap;
+            document.getElementById('rm-1-title').innerText = t.rm1t;
+            document.getElementById('rm-1-desc').innerText = t.rm1d;
+            document.getElementById('rm-2-title').innerText = t.rm2t;
+            document.getElementById('rm-2-desc').innerText = t.rm2d;
+            document.getElementById('rm-3-title').innerText = t.rm3t;
+            document.getElementById('rm-3-desc').innerText = t.rm3d;
+            document.getElementById('ref-title').innerText = t.ref;
+            document.getElementById('ref-btn').innerText = t.copy;
         }
 
         function buyCoins() {
