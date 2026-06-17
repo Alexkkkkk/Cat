@@ -1,0 +1,32 @@
+name: Deploy Contract
+on:
+  push:
+    branches:
+      - main # Скрипт сработает, когда вы отправите изменения в ветку main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Compile Tact Contract
+        run: npx tact
+
+      # ВАЖНО: Деплой требует MNEMONIC. 
+      # Никогда не пишите фразу в коде!
+      # Добавьте вашу фразу в Settings -> Secrets and variables -> Actions вашего репозитория на GitHub
+      - name: Deploy to Mainnet
+        env:
+          MNEMONIC: ${{ secrets.MNEMONIC }}
+          MASTER_ADDRESS: ${{ secrets.MASTER_ADDRESS }}
+        run: npx blueprint run --no-interaction
