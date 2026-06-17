@@ -4,47 +4,53 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Plushie Cat</title>
-    <!-- Подключаем Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Подключаем TON Connect UI -->
     <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
+    <style>
+        /* Добавляем мягкий градиент на фон */
+        body { background: linear-gradient(180deg, #fdf2f8 0%, #fae8ff 100%); }
+    </style>
 </head>
-<body class="bg-pink-50 flex flex-col items-center justify-center min-h-screen p-4 font-sans">
+<body class="flex flex-col items-center justify-start min-h-screen p-6 font-sans">
 
-    <!-- Контейнер для кнопки кошелька -->
-    <div id="ton-connect" class="mb-8"></div>
+    <div id="ton-connect" class="w-full flex justify-end mb-4"></div>
 
-    <!-- Основной блок -->
-    <div class="bg-white p-8 rounded-3xl shadow-xl text-center max-w-sm w-full border border-pink-100">
-        <img src="static/images/logo.png" alt="Plushie Cat" class="w-32 h-32 mx-auto mb-6 rounded-full border-4 border-pink-200 shadow-inner">
+    <div class="bg-white/80 backdrop-blur-md p-8 rounded-[2rem] shadow-2xl text-center max-w-sm w-full border border-white/50">
+        <div class="relative mx-auto w-32 h-32 mb-6">
+            <img src="static/images/logo.png" alt="Plushie Cat" 
+                 class="w-full h-full object-cover rounded-3xl border-4 border-white shadow-lg">
+        </div>
         
-        <h1 class="text-3xl font-bold text-pink-600 mb-4">Plushie Cat</h1>
-        <p class="text-gray-600 leading-relaxed mb-6">
-            Мы создаем проект, где каждый плюшевый котик находит свое место...
+        <h1 class="text-4xl font-extrabold text-pink-600 mb-2 tracking-tight">Plushie Cat</h1>
+        <p class="text-pink-400 font-medium mb-8 text-sm uppercase tracking-widest">Мир плюшевых друзей</p>
+        
+        <p class="text-gray-600 leading-relaxed mb-8 px-2">
+            Присоединяйтесь к нашему уютному сообществу. Собирайте, меняйте и заботьтесь о своих котиках!
         </p>
 
-        <!-- Блок для отображения статуса -->
-        <div id="status-block" class="hidden text-sm text-green-600 bg-green-50 p-3 rounded-lg border border-green-200">
-            Кошелек подключен!
+        <div id="status-block" class="hidden transition-all duration-500 ease-in-out transform">
+            <div class="bg-green-100 text-green-700 py-3 px-6 rounded-2xl border border-green-200 font-semibold flex items-center justify-center gap-2">
+                <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                Кошелек подключен
+            </div>
         </div>
     </div>
 
+    <div class="mt-auto pt-8 text-gray-400 text-xs">
+        Plushie Cat © 2026
+    </div>
+
     <script>
-        // Инициализация TON Connect
         const tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
             manifestUrl: 'https://catplushie.bothost.tech/static/tonconnect-manifest.json',
             buttonRootId: 'ton-connect'
         });
 
-        // Слушатель событий изменения состояния кошелька
         tonConnectUI.onStatusChange((wallet) => {
             const statusBlock = document.getElementById('status-block');
             if (wallet) {
-                // Если кошелек подключен
                 statusBlock.classList.remove('hidden');
-                console.log("Wallet connected:", wallet);
             } else {
-                // Если кошелек отключен
                 statusBlock.classList.add('hidden');
             }
         });
