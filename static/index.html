@@ -120,26 +120,16 @@
             document.getElementById('ref-btn').innerText = t.copy;
         }
 
-        // Загрузка данных
-        fetch(`/api/balance/${userId}`)
-            .then(res => res.json())
-            .then(data => { document.getElementById('balance-count').innerText = data.balance; });
-
-        fetch(`/api/stats/${userId}`)
-            .then(res => res.json())
-            .then(data => { document.getElementById('ref-count').innerText = data.referrals; });
+        // Обновление данных при загрузке
+        fetch(`/api/balance/${userId}`).then(res => res.json()).then(data => { document.getElementById('balance-count').innerText = data.balance; });
+        fetch(`/api/stats/${userId}`).then(res => res.json()).then(data => { document.getElementById('ref-count').innerText = data.referrals; });
 
         function buyCoins() {
-            fetch(`/api/buy/${userId}`, { method: 'POST' })
-                .then(() => {
-                    alert("Успешно! Баланс обновлен.");
-                    location.reload();
-                });
+            fetch(`/api/buy/${userId}`, { method: 'POST' }).then(() => location.reload());
         }
 
         function copyLink() {
-            const link = `https://t.me/CatPlushieBot?start=${userId}`;
-            navigator.clipboard.writeText(link);
+            navigator.clipboard.writeText(`https://t.me/CatPlushieBot?start=${userId}`);
             alert("Ссылка скопирована!");
         }
 
