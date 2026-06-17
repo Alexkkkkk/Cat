@@ -1,75 +1,35 @@
-import asyncio
-import uvicorn
-import logging
-import os
-from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-from aiogram import Bot, Dispatcher, types
-from aiogram.filters import Command
-from threading import Thread
+const { Telegraf } = require('telegraf');
+const express = require('express');
+const path = require('path');
 
-# --- НАСТРОЙКИ ЛОГИРОВАНИЯ ---
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+const BOT_TOKEN = "8988117619:AAEsJA7Ub7krmI-Sx4ofPVuOQARV_QzBGBU";
+const WEB_APP_URL = "https://catplushie.bothost.tech";
+const PORT = process.env.PORT || 3000;
 
-# --- НАСТРОЙКИ ---
-BOT_TOKEN = "8988117619:AAEsJA7Ub7krmI-Sx4ofPVuOQARV_QzBGBU"
-WEB_APP_URL = "https://catplushie.bothost.tech"
+// --- ИНИЦИАЛИЗАЦИЯ TELEGRAM БОТА ---
+const bot = new Telegraf(BOT_TOKEN);
 
-# --- ИНИЦИАЛИЗАЦИЯ FASTAPI ---
-app = FastAPI()
-# Убедитесь, что папка static существует в корне проекта
-app.mount("/static", StaticFiles(directory="static"), name="static")
+bot.start((ctx) => {
+    console.log(`Пользователь ${ctx.from.id} нажал /start`);
+    ctx.reply('Добро пожаловать в Plushie Cat! Нажмите кнопку:', {
+        reply_markup: {
+            inline_keyboard: [[
+                { text: "Открыть Plushie Cat", web_app: { url: WEB_APP_URL } }
+            ]]
+        }
+    });
+});
 
-@app.get("/")
-async def read_index():
-    logger.info("Пользователь открыл главную страницу")
-    return FileResponse('static/index.html')
+bot.launch().then(() => console.log("Telegram-бот запущен!"));
 
-def run_fastapi():
-    # Получаем порт из переменной окружения PORT, предоставляемой Bothost
-    # Если переменная не задана, используем 3000 по умолчанию
-    port = int(os.getenv("PORT", 3000))
-    logger.info(f"Запуск FastAPI сервера на порту {port}...")
-    
-    # host="0.0.0.0" критически важен для работы Reverse Proxy
-    uvicorn.run(app, host="0.0.0.0", port=port)
+// --- ИНИЦИАЛИЗАЦИЯ EXPRESS (вместо FastAPI) ---
+const app = express();
+app.use('/static', express.static(path.join(__dirname, 'static')));
 
-# --- ИНИЦИАЛИЗАЦИЯ TELEGRAM БОТА ---
-bot = Bot(token=BOT_TOKEN)
-dp = Dispatcher()
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'static', 'index.html'));
+});
 
-@dp.message(Command("start"))
-async def cmd_start(message: types.Message):
-    logger.info(f"Пользователь {message.from_user.id} нажал /start")
-    kb = types.InlineKeyboardMarkup(inline_keyboard=[
-        [types.InlineKeyboardButton(
-            text="Открыть Plushie Cat", 
-            web_app=types.WebAppInfo(url=WEB_APP_URL)
-        )]
-    ])
-    await message.answer("Добро пожаловать в Plushie Cat! Нажмите кнопку:", reply_markup=kb)
-
-async def run_bot():
-    logger.info("Запуск Telegram-бота...")
-    await dp.start_polling(bot)
-
-# --- ОСНОВНОЙ ЗАПУСК ---
-if __name__ == "__main__":
-    logger.info("Инициализация системы...")
-    
-    # Запуск FastAPI в отдельном потоке
-    server_thread = Thread(target=run_fastapi, daemon=True)
-    server_thread.start()
-    
-    # Запуск бота в основном потоке
-    try:
-        asyncio.run(run_bot())
-    except KeyboardInterrupt:
-        logger.info("Бот остановлен пользователем")
-    except Exception as e:
-        logger.error(f"Критическая ошибка: {e}")
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Web-сервер запущен на порту ${PORT}`);
+});
