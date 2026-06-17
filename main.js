@@ -40,7 +40,7 @@ bot.start((ctx) => {
 
 // --- ИНИЦИАЛИЗАЦИЯ EXPRESS ---
 const app = express();
-app.use(express.json()); // Добавлено для корректной работы API
+app.use(express.json()); // ОБЯЗАТЕЛЬНО для работы POST запросов
 app.use('/static', express.static(path.join(__dirname, 'static')));
 
 app.get('/', (req, res) => {
@@ -54,18 +54,18 @@ app.get('/api/balance/:id', (req, res) => {
     });
 });
 
+// API для покупки монет (Добавлено)
+app.post('/api/buy/:id', (req, res) => {
+    db.run("UPDATE users SET balance = balance + 100 WHERE id = ?", [req.params.id], (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ success: true });
+    });
+});
+
 // API для получения количества рефералов
 app.get('/api/stats/:id', (req, res) => {
     db.get("SELECT count(*) as referrals FROM users WHERE referrer_id = ?", [req.params.id], (err, row) => {
         res.json({ referrals: row ? row.referrals : 0 });
-    });
-});
-
-// API для покупки монет (Добавлено)
-app.post('/api/buy/:id', (req, res) => {
-    db.run("UPDATE users SET balance = balance + 100 WHERE id = ?", [req.params.id], (err) => {
-        if (err) return res.status(500).json({ success: false });
-        res.json({ success: true });
     });
 });
 
@@ -84,8 +84,10 @@ const stopServices = async () => {
         await bot.stop('SIGTERM');
         server.close();
         db.close();
+        console.log("Сервисы остановлены.");
         process.exit(0);
     } catch (err) {
+        console.error("Ошибка при остановке:", err);
         process.exit(1);
     }
 };
