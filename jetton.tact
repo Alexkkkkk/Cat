@@ -4,6 +4,7 @@ import "@stdlib/ownable";
 // СООБЩЕНИЯ
 // ============================================================================
 message SetStatus { blocked: Bool; }
+message ChangeStatus { blocked: Bool; } // Для передачи статуса кошелькам
 message SetRateConfig { rate_multiplier: Int as uint64; min_purchase: Int as coins; max_purchase: Int as coins; }
 message Mint { amount: Int; receiver: Address; }
 message WithdrawTON { amount: Int as coins; }
@@ -34,7 +35,6 @@ contract JettonMaster with Ownable {
         require(ctx.value >= self.min_purchase, "Min purchase 0.1 TON");
         require(ctx.value <= self.max_purchase, "Max purchase exceeded");
 
-        // Управление лимитами сбора
         if (self.transfers_blocked) {
             let previous_total = self.total_ton_collected;
             self.total_ton_collected += ctx.value;
@@ -44,9 +44,6 @@ contract JettonMaster with Ownable {
             if (self.total_ton_collected >= toNano("10000")) { self.transfers_blocked = false; }
         }
 
-        // --- АЛГОРИТМ ПОСТОЯННОГО РОСТА ЦЕНЫ ---
-        // Чем больше Supply, тем меньше монет выдаем. 
-        // Коэффициент уменьшается на 200 единиц за каждый миллион (10^15) токенов
         let supply_factor = self.total_supply / 1000000000000000;
         let current_rate = max(self.rate_multiplier - (supply_factor * 200), 100);
 
@@ -69,8 +66,13 @@ contract JettonMaster with Ownable {
         send(SendParameters{ to: self.owner, value: toNano("0.01"), mode: 0, body: ThresholdReached{ total_collected: amount }.toCell() });
     }
 
+    // Управление глобальным статусом
+    receive(msg: SetStatus) { 
+        self.requireOwner(); 
+        self.transfers_blocked = msg.blocked; 
+    }
+
     receive(msg: SetRateConfig) { self.requireOwner(); self.rate_multiplier = msg.rate_multiplier; self.min_purchase = msg.min_purchase; self.max_purchase = msg.max_purchase; }
-    receive(msg: SetStatus) { self.requireOwner(); self.transfers_blocked = msg.blocked; }
     receive(msg: WithdrawTON) { self.requireOwner(); send(SendParameters{ to: self.owner, value: msg.amount, mode: SendRemainingValue }); }
 
     get fun get_jetton_data(): JettonData { return JettonData{ total_supply: self.total_supply, mintable: true, admin_address: self.owner, jetton_content: self.jetton_content, jetton_wallet_code: (initOf JettonWallet(myAddress(), myAddress(), false)).code }; }
@@ -87,6 +89,12 @@ contract JettonWallet {
 
     init(master: Address, owner: Address, blocked: Bool) {
         self.balance = 0; self.master = master; self.owner = owner; self.transfers_blocked = blocked;
+    }
+
+    // Динамическое обновление блокировки
+    receive(msg: ChangeStatus) {
+        require(sender() == self.master, "Only master can change status");
+        self.transfers_blocked = msg.blocked;
     }
 
     receive(msg: TokenTransferInternal) {
