@@ -1,13 +1,13 @@
 FROM node:20-slim
 
-WORKDIR /usr/src/app
+# Создаем папку, как ожидает Bothost
+WORKDIR /app
 
-# Копируем зависимости и ставим их
-COPY package*.json ./
-RUN npm install
-
-# Копируем остальной код
+# Копируем всё содержимое
 COPY . .
+
+# Устанавливаем зависимости
+RUN npm install
 
 # Открываем порт
 EXPOSE 3000
