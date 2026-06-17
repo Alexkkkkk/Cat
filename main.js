@@ -20,9 +20,7 @@ bot.start((ctx) => {
     });
 });
 
-bot.launch().then(() => console.log("Telegram-бот запущен!"));
-
-// --- ИНИЦИАЛИЗАЦИЯ EXPRESS (вместо FastAPI) ---
+// --- ИНИЦИАЛИЗАЦИЯ EXPRESS ---
 const app = express();
 app.use('/static', express.static(path.join(__dirname, 'static')));
 
@@ -30,6 +28,28 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'static', 'index.html'));
 });
 
-app.listen(PORT, '0.0.0.0', () => {
+// Запуск веб-сервера
+const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`Web-сервер запущен на порту ${PORT}`);
 });
+
+// Запуск бота
+bot.launch().then(() => console.log("Telegram-бот запущен!"));
+
+// --- ПЛАВНОЕ ЗАВЕРШЕНИЕ (Graceful Shutdown) ---
+// Это предотвращает ошибку 409 Conflict и зависание портов
+const stopServices = async () => {
+    console.log("Остановка сервисов...");
+    try {
+        await bot.stop('SIGTERM');
+        server.close();
+        console.log("Сервисы остановлены.");
+        process.exit(0);
+    } catch (err) {
+        console.error("Ошибка при остановке:", err);
+        process.exit(1);
+    }
+};
+
+process.once('SIGINT', stopServices);
+process.once('SIGTERM', stopServices);
