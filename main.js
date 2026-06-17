@@ -5,17 +5,23 @@ import { fileURLToPath } from 'url';
 import sqlite3 from 'sqlite3';
 import fs from 'fs';
 import cors from 'cors';
-import { updateMarketConfig } from './scripts/controller.js'; // Ваш скрипт управления
+import { updateMarketConfig } from './scripts/controller.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const BOT_TOKEN = "8988117619:AAEjj9gJvQ0hN5z4aZMqHpZWKc0rOIZFRiE";
+
+// Рекомендуется использовать переменные окружения для токена
+const BOT_TOKEN = process.env.BOT_TOKEN || "8988117619:AAEjj9gJvQ0hN5z4aZMqHpZWKc0rOIZFRiE";
 const WEB_APP_URL = "https://catplushie.bothost.tech";
 const PORT = process.env.PORT || 3000;
 
 // --- ИНИЦИАЛИЗАЦИЯ ---
 let contractConfig = { masterAddress: 'none' };
 if (fs.existsSync('contract_config.json')) {
-    contractConfig = JSON.parse(fs.readFileSync('contract_config.json', 'utf8'));
+    try {
+        contractConfig = JSON.parse(fs.readFileSync('contract_config.json', 'utf8'));
+    } catch (e) {
+        console.error("Ошибка при чтении конфига контракта:", e);
+    }
 }
 
 const db = new sqlite3.Database('database.sqlite');
@@ -48,13 +54,13 @@ bot.start((ctx) => {
     });
 });
 
-// Админ-команда для управления контрактом
 bot.command('setrate', async (ctx) => {
-    // ВАЖНО: Добавьте проверку ID админа!
+    // ВАЖНО: Добавьте проверку ID админа, чтобы управлять курсом могли только вы!
     try {
         await updateMarketConfig(12000, 100000000, 1000000000000);
-        ctx.reply('Курс на блокчейне обновлен!');
+        ctx.reply('Курс на блокчейне успешно обновлен!');
     } catch (e) {
+        console.error(e);
         ctx.reply('Ошибка управления контрактом.');
     }
 });
@@ -75,9 +81,21 @@ app.post('/api/buy/:id', (req, res) => {
     });
 });
 
-// --- ЗАПУСК ---
-const server = app.listen(PORT, '0.0.0.0', () => console.log(`Сервер запущен на ${PORT}`));
-bot.launch().then(() => console.log("Бот запущен!"));
+// --- ЗАПУСК СЕРВИСОВ ---
+const server = app.listen(PORT, '0.0.0.0', () => console.log(`Web-сервер запущен на порту ${PORT}`));
 
-process.once('SIGINT', () => { bot.stop('SIGINT'); server.close(); db.close(); });
-process.once('SIGTERM', () => { bot.stop('SIGTERM'); server.close(); db.close(); });
+// Ключевое изменение: dropPendingUpdates: true исправляет ошибку 409
+bot.launch({
+    dropPendingUpdates: true 
+}).then(() => console.log("Бот запущен и очистил старые очереди!"));
+
+// Корректное завершение работы
+const stop = () => {
+    bot.stop();
+    server.close();
+    db.close();
+    process.exit(0);
+};
+
+process.once('SIGINT', stop);
+process.once('SIGTERM', stop);
