@@ -7,7 +7,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
     <style>
-        /* Добавляем мягкий градиент на фон */
         body { background: linear-gradient(180deg, #fdf2f8 0%, #fae8ff 100%); }
     </style>
 </head>
@@ -15,30 +14,44 @@
 
     <div id="ton-connect" class="w-full flex justify-end mb-4"></div>
 
-    <div class="bg-white/80 backdrop-blur-md p-8 rounded-[2rem] shadow-2xl text-center max-w-sm w-full border border-white/50">
+    <div class="bg-white/80 backdrop-blur-md p-8 rounded-[2rem] shadow-2xl text-center max-w-sm w-full border border-white/50 mb-6">
         <div class="relative mx-auto w-32 h-32 mb-6">
             <img src="static/images/logo.png" alt="Plushie Cat" 
                  class="w-full h-full object-cover rounded-3xl border-4 border-white shadow-lg">
         </div>
-        
         <h1 class="text-4xl font-extrabold text-pink-600 mb-2 tracking-tight">Plushie Cat</h1>
-        <p class="text-pink-400 font-medium mb-8 text-sm uppercase tracking-widest">Мир плюшевых друзей</p>
+        <p class="text-pink-400 font-medium mb-6 text-sm uppercase tracking-widest">Мир плюшевых друзей</p>
         
-        <p class="text-gray-600 leading-relaxed mb-8 px-2">
-            Присоединяйтесь к нашему уютному сообществу. Собирайте, меняйте и заботьтесь о своих котиках!
-        </p>
-
-        <div id="status-block" class="hidden transition-all duration-500 ease-in-out transform">
-            <div class="bg-green-100 text-green-700 py-3 px-6 rounded-2xl border border-green-200 font-semibold flex items-center justify-center gap-2">
+        <div id="status-block" class="hidden">
+            <div class="bg-green-100 text-green-700 py-2 px-4 rounded-full border border-green-200 text-sm font-semibold flex items-center justify-center gap-2">
                 <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
                 Кошелек подключен
             </div>
         </div>
     </div>
 
-    <div class="mt-auto pt-8 text-gray-400 text-xs">
-        Plushie Cat © 2026
+    <div class="bg-white/60 backdrop-blur-md p-6 rounded-[2rem] max-w-sm w-full border border-white/50 shadow-lg">
+        <h2 class="text-xl font-bold text-pink-600 mb-6 text-center">Наш путь</h2>
+        <div class="relative border-l-2 border-pink-200 ml-3 space-y-8">
+            <div class="relative pl-6">
+                <div class="absolute -left-[9px] top-1 w-4 h-4 bg-pink-500 rounded-full"></div>
+                <h3 class="font-bold text-gray-800">Запуск проекта</h3>
+                <p class="text-xs text-gray-500">Бот, WebApp, TON Connect</p>
+            </div>
+            <div class="relative pl-6">
+                <div class="absolute -left-[9px] top-1 w-4 h-4 bg-pink-300 rounded-full"></div>
+                <h3 class="font-bold text-gray-800">Экономика</h3>
+                <p class="text-xs text-gray-500">Внедрение CATP токенов</p>
+            </div>
+            <div class="relative pl-6">
+                <div class="absolute -left-[9px] top-1 w-4 h-4 bg-pink-200 rounded-full"></div>
+                <h3 class="font-bold text-gray-800">NFT Коллекция</h3>
+                <p class="text-xs text-gray-500">Мини-игра и маркетплейс</p>
+            </div>
+        </div>
     </div>
+
+    <div class="mt-auto pt-8 text-gray-400 text-xs">Plushie Cat © 2026</div>
 
     <script>
         const tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
@@ -47,12 +60,7 @@
         });
 
         tonConnectUI.onStatusChange((wallet) => {
-            const statusBlock = document.getElementById('status-block');
-            if (wallet) {
-                statusBlock.classList.remove('hidden');
-            } else {
-                statusBlock.classList.add('hidden');
-            }
+            document.getElementById('status-block').classList.toggle('hidden', !wallet);
         });
     </script>
 </body>
