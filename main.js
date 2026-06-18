@@ -34,6 +34,11 @@ app.use(cors());
 app.use(express.json());
 app.use('/static', express.static(path.join(__dirname, 'static')));
 
+// --- КОРНЕВОЙ ПУТЬ (Исправление ошибки Cannot GET /) ---
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'static', 'index.html'));
+});
+
 // --- TELEGRAM БОТ ---
 bot.start((ctx) => {
     const userId = ctx.from.id;
