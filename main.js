@@ -12,8 +12,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // КОНФИГУРАЦИЯ
 const ADMIN_ID = 476014374; 
-const BOT_TOKEN = process.env.BOT_TOKEN || "
-8988117619:AAF00L85tPpQOlLbM-SAmbwi-w7EDGOtzlM";
+const BOT_TOKEN = process.env.BOT_TOKEN || "8988117619:AAF00L85tPpQOlLbM-SAmbwi-w7EDGOtzlM";
 const WEB_APP_URL = "https://catplushie.bothost.tech";
 const PORT = process.env.PORT || 3000;
 
