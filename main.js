@@ -9,7 +9,7 @@ import cors from 'cors';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // КОНФИГУРАЦИЯ (Тестовый вариант)
-const BOT_TOKEN = "8988117619:AAF00L85tPpQOlLbM-SAmbwi-w7EDGOtzlM";
+const BOT_TOKEN = "8988117619:AAGE96lQVXwOlzS_A2HWYHAm6_gkv5oV-uI";
 const WEB_APP_URL = "https://catplushie.bothost.tech";
 const PORT = process.env.PORT || 3000;
 
