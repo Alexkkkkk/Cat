@@ -11,8 +11,8 @@ import { updateMarketConfig, changeWalletStatus } from './scripts/controller.js'
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // КОНФИГУРАЦИЯ
-const ADMIN_ID = 476014374; // Ваш ID, который вы предоставили
-const BOT_TOKEN = process.env.BOT_TOKEN || "8988117619:AAEjj9gJvQ0hN5z4aZMqHpZWKc0rOIZFRiE";
+const ADMIN_ID = 476014374; 
+const BOT_TOKEN = process.env.BOT_TOKEN || "ВАШ_НОВЫЙ_ТОКЕН_ИЗ_BOTFATHER";
 const WEB_APP_URL = "https://catplushie.bothost.tech";
 const PORT = process.env.PORT || 3000;
 
@@ -53,48 +53,39 @@ bot.start((ctx) => {
 });
 
 // АДМИН-КОМАНДА: Установка курса и лимитов
-// Пример: /setrate 12000 0.1 1000
 bot.command('setrate', async (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return ctx.reply("⛔️ Доступ запрещен.");
-    
     try {
         const parts = ctx.message.text.split(' ');
         if (parts.length < 4) return ctx.reply("Использование: /setrate <rate> <minTON> <maxTON>");
-        
-        await ctx.reply("⏳ Отправляю транзакцию обновления курса...");
+        await ctx.reply("⏳ Отправляю транзакцию...");
         await updateMarketConfig(parseInt(parts[1]), toNano(parts[2]), toNano(parts[3]));
-        ctx.reply('✅ Курс и лимиты успешно обновлены на блокчейне!');
+        ctx.reply('✅ Успешно обновлено!');
     } catch (e) {
-        ctx.reply('❌ Ошибка контракта: ' + e.message);
+        ctx.reply('❌ Ошибка: ' + e.message);
     }
 });
 
-// АДМИН-КОМАНДА: Блокировка/Разблокировка кошелька
-// Пример: /lock <address> true
+// АДМИН-КОМАНДА: Блокировка/Разблокировка
 bot.command('lock', async (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return ctx.reply("⛔️ Доступ запрещен.");
-    
     try {
         const parts = ctx.message.text.split(' ');
         if (parts.length < 3) return ctx.reply("Использование: /lock <address> <true/false>");
-        
-        await ctx.reply(`⏳ Отправляю команду блокировки для ${parts[1]}...`);
         await changeWalletStatus(parts[1], parts[2] === 'true');
-        ctx.reply(`🔒 Статус кошелька успешно изменен на: ${parts[2]}`);
+        ctx.reply(`🔒 Статус изменен на: ${parts[2]}`);
     } catch (e) {
-        ctx.reply('❌ Ошибка при смене статуса: ' + e.message);
+        ctx.reply('❌ Ошибка: ' + e.message);
     }
 });
 
 // --- API ---
 app.get('/api/config', (req, res) => res.json(contractConfig));
-
 app.get('/api/balance/:id', (req, res) => {
     db.get("SELECT balance FROM users WHERE id = ?", [req.params.id], (err, row) => {
         res.json({ balance: row ? row.balance : 0 });
     });
 });
-
 app.post('/api/buy/:id', (req, res) => {
     db.run("UPDATE users SET balance = balance + 100 WHERE id = ?", [req.params.id], (err) => {
         if (err) return res.status(500).json({ error: err.message });
@@ -102,11 +93,28 @@ app.post('/api/buy/:id', (req, res) => {
     });
 });
 
-// --- ЗАПУСК ---
-const server = app.listen(PORT, '0.0.0.0', () => console.log(`Web-сервер запущен на порту ${PORT}`));
+// --- БЕЗОПАСНЫЙ ЗАПУСК ---
+const startApp = async () => {
+    try {
+        const server = app.listen(PORT, '0.0.0.0', () => {
+            console.log(`Web-сервер запущен на порту ${PORT}`);
+        });
 
-bot.launch({ dropPendingUpdates: true }).then(() => console.log("Бот запущен и готов к работе!"));
+        await bot.launch({ dropPendingUpdates: true });
+        console.log("Бот запущен и готов к работе!");
 
-const stop = () => { bot.stop(); server.close(); db.close(); process.exit(0); };
-process.once('SIGINT', stop);
-process.once('SIGTERM', stop);
+        const stop = () => {
+            bot.stop('SIGINT');
+            server.close();
+            db.close();
+            process.exit(0);
+        };
+        process.once('SIGINT', stop);
+        process.once('SIGTERM', stop);
+    } catch (err) {
+        console.error("Ошибка запуска:", err);
+        process.exit(1);
+    }
+};
+
+startApp();
