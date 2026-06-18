@@ -4,8 +4,7 @@
   "main": "main.js",
   "type": "module",
   "scripts": {
-    "start": "node main.js",
-    "control": "node scripts/controller.js"
+    "start": "node main.js"
   },
   "dependencies": {
     "telegraf": "^4.16.3",
